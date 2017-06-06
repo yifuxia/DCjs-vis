@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+  <link href="https://fonts.googleapis.com/css?family=Source+Sans+Pro" rel="stylesheet">
+  <link href="http://cdnjs.cloudflare.com/ajax/libs/dc/2.0.0/dc.min.css" rel="stylesheet">
+  </head>
+  <style type="text/css">
+    #referral_source_chart text {
+      fill: black
+    }
+    #education_chart text {
+      fill: black
+    }
+    .row_1 div{
+      display: inline-block;
+      vertical-align: top;
+    }
+    .row_3 > div{
+      display: inline-block;
+      vertical-align: top;
+    }
+    .row_3_inner_row_1 div {
+      display: inline-block;
+      vertical-align: top;
+    }
+    .row_3_inner_row_2 div {
+      display: inline-block;
+      vertical-align: top;
+    }
+  </style>
+  <body>
+    <h2>Data exploration dashboard</h2>
+    <hr />
+    <div class='row_1'>
+      <h3>Distributions</h3>
+      <div>
+        <p><strong>Age</strong></p>
+        <div id="age_chart">
+        </div>
+      </div>
+      <div>
+        <p><strong>Signup and 1st access gap (days)</strong></p>
+        <div id="signup_gap_chart"></div>
+      </div>
+      <div>
+        <p><strong>Facebook freinds</strong></p>
+        <div id="fb_count_chart"></div>
+      </div>
+    </div>
+    <div class="row_2">
+      <div>  
+        <p><strong>How much paid</strong></p>
+        <div id="how_much_paid_chart"></div>
+      </div>
+    </div>
+    
+    <div class="row_3">
+      <div>
+        <p><strong>Money received vs money sent</strong></p>
+        <div id="money_in_out_times_chart"></div>
+      </div>
+      <div>
+        <div class="row_3_inner_row_1">
+          <div>
+            <p><strong>How often paid</strong></p>
+            <div id="how_often_paid_chart"></div>
+          </div>
+          <div>
+            <p><strong>Gender</strong></p>
+            <div id="gender_chart"></div>
+          </div>
+          <div>
+            <p><strong>Employed</strong></p>
+            <div id="employed_chart"></div>
+          </div>
+        </div>
+        <div class="row_3_inner_row_2">
+          <div>
+            <p><strong>Referral source</strong></p>
+            <div id="referral_source_chart"></div>
+          </div>
+          <div style="margin-left:60px">
+            <p><strong>Education</strong></p>
+            <div id="education_chart"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div id="home_year_chart"></div>
+    
+  
+    
+    <div class='dc-data-count'>
+     <span class='filter-count'></span>
+     selected out of <span class='total-count'></span> records.
+    </div>
+   
+  </body>
+  <script src="lib/jquery.min.js"></script>
+  <script src="https://d3js.org/d3.v3.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/crossfilter/1.3.12/crossfilter.min.js"></script>
+  <script src="http://cdnjs.cloudflare.com/ajax/libs/dc/2.0.0/dc.min.js"></script>
+  <script>
+    let how_often_paid_chart = dc.pieChart('#how_often_paid_chart');
+    let age_chart = dc.barChart('#age_chart');
+    let signup_gap_chart = dc.barChart('#signup_gap_chart');
+    let fb_count_chart = dc.barChart('#fb_count_chart');
+    let referral_source_chart = dc.rowChart('#referral_source_chart');
+    let education_chart = dc.rowChart('#education_chart');
+    let gender_chart = dc.pieChart('#gender_chart');
+    let employed_chart = dc.pieChart('#employed_chart');
+    let how_much_paid_chart = dc.barChart('#how_much_paid_chart');
+    let data_count = dc.dataCount('.dc-data-count');
+    //let data_table = dc.dataTable('.dc-data-table');
+    let money_in_out_times_chart = dc.scatterPlot("#money_in_out_times_chart");
+
+    d3.csv('data/derived_data.csv', function (data) {
+      
+      let numberFormat = d3.format('.2f');
+
+      let scatter_colors = d3.scale.ordinal()
+      .domain(['daily',"weekly","monthly"])
+      .range([ "#66c2a5","#fc8d62", '#8da0cb']);
+
+      data.forEach(function (d) {
+        d.age_in_days = +d.age_in_days;
+        d.current_home_months = +d.current_home_months; 
+        d.current_job_months = +d.current_job_months; 
+        d.fb_friend_count = +d.fb_friend_count;
+        d.first_access_signup_gap = +d.first_access_signup_gap;
+        d.how_much_paid = +d.how_much_paid;
+        d.local_access_time = +d.local_access_time;
+        d.money_in_times = +d.money_in_times;
+        d.money_in_amount = +d.money_in_amount;
+        d.money_out_times = +d.money_out_times;
+        d.money_out_amount = +d.money_out_amount;
+      })
+      
+      let user = crossfilter(data)
+      var all = user.groupAll();
+      
+      let how_often_paid = user.dimension(d => d.how_often_paid)
+      let how_often_paid_group = how_often_paid.group();
+
+      let age = user.dimension(d => Math.floor(d.age));
+      let age_group = age.group();
+
+      let signup_gap = user.dimension(d => Math.floor(d.first_access_signup_gap / 10) *10);
+      let signup_gap_group = signup_gap.group();
+
+      let fb_count = user.dimension(d =>Math.floor(d.fb_friend_count / 100) * 100);
+      let fb_count_group = fb_count.group();
+
+      let referral_source = user.dimension(d =>d.referral_source);
+      let referral_source_group = referral_source.group();
+
+      let education = user.dimension(d =>d.education === 'none'? '':d.education);
+      let education_group = education.group();
+
+      let gender = user.dimension(d =>d.gender);
+      let gender_group = gender.group();
+
+      let employed = user.dimension(d =>d.is_employed);
+      let employed_group = employed.group();
+
+      let how_much_paid = user.dimension(d =>Math.floor(d.how_much_paid / 200) * 200)
+      let how_much_paid_group = how_much_paid.group();
+
+      let money_in_out_times = user.dimension(function (d) {
+          //jittering
+          return [d.money_in_times + Math.random()*2, d.money_out_times + Math.random()*2, d.how_often_paid];            
+        })
+      let money_in_out_times_group = money_in_out_times.group();
+
+     
+      how_often_paid_chart 
+        .width(200)
+        .height(200)
+        .radius(80)
+        .innerRadius(30)
+        .dimension(how_often_paid)
+        .group(how_often_paid_group)
+        .colors(scatter_colors);
+
+      age_chart
+      .width(400)
+      .height(100)
+      .margins({top: 10, right: 50, bottom: 30, left: 40})
+      .dimension(age)
+      .group(age_group)
+      .elasticY(true)
+      .centerBar(true)
+      .barPadding(.3)
+      .round(dc.round.floor)
+      .alwaysUseRounding(true)
+      .x(d3.scale.linear().domain([0, 100]))
+      .renderHorizontalGridLines(true)
+      .filterPrinter(function (filters) {
+          var filter = filters[0], s = '';
+          s += numberFormat(filter[0]) + ' -> ' + numberFormat(filter[1]) + '';
+          return s;
+        });
+      age_chart.yAxis().ticks(5);
+
+      signup_gap_chart
+      .width(400)
+      .height(100)
+      .margins({top: 10, right: 50, bottom: 30, left: 40})
+      .dimension(signup_gap)
+      .group(signup_gap_group)
+      .elasticY(true)
+      .centerBar(true)
+      .round(dc.round.floor)
+      .alwaysUseRounding(true)
+      .x(d3.scale.linear().domain([100, 800]))
+      .renderHorizontalGridLines(true)
+      .filterPrinter(function (filters) {
+            var filter = filters[0], s = '';
+            s += numberFormat(filter[0]) + ' -> ' + numberFormat(filter[1]) + '';
+            return s;
+        });
+      signup_gap_chart.yAxis().ticks(5);
+      signup_gap_chart.xUnits(function(){return 60;});
+
+      fb_count_chart
+      .width(400)
+      .height(100)
+      .margins({top: 10, right: 50, bottom: 30, left: 40})
+      .dimension(fb_count)
+      .group(fb_count_group)
+      .elasticY(true)
+      .centerBar(true)
+      .gap(0.001)
+      .round(dc.round.floor)
+      .alwaysUseRounding(true)
+      .x(d3.scale.linear().domain([0, 5000]))
+      .renderHorizontalGridLines(true)
+      .filterPrinter(function (filters) {
+            var filter = filters[0], s = '';
+            s += numberFormat(filter[0]) + ' -> ' + numberFormat(filter[1]) + '';
+            return s;
+        });
+      fb_count_chart.xUnits(function(){return 80;});
+      fb_count_chart.yAxis().ticks(5);
+
+      referral_source_chart
+      .width(250)
+      .height(200)
+      .margins({top: 0, left: 10, right: 10, bottom: 30})
+      .group(referral_source_group)
+      .dimension(referral_source)
+      .ordinalColors(['#fbb4ae','#b3cde3','#ccebc5','#decbe4','#fed9a6','#ffffcc','#e5d8bd','#fddaec','#f2f2f2'])
+      .label(function (d) {
+          if (d.key === ''){
+            return 'uncertain'
+          }
+          return d.key;
+      })
+      .title(function (d) {
+          return d.value;
+      })
+      .elasticX(true)
+      .xAxis().ticks(4);
+
+      education_chart
+      .width(250)
+      .height(200)
+      .margins({top: 0, left: 10, right: 10, bottom: 30})
+      .group(education_group)
+      .dimension(education)
+      .ordinalColors(['#fbb4ae','#b3cde3','#ccebc5','#decbe4','#fed9a6','#ffffcc','#e5d8bd','#fddaec','#f2f2f2'])
+      .label(function (d) {
+          if (d.key === ''){
+            return 'uncertain'
+          }
+          return d.key;
+      })
+      .title(function (d) {
+          return d.value;
+      })
+      .elasticX(true)
+      .xAxis().ticks(4);
+
+      gender_chart 
+        .width(200)
+        .height(200)
+        .radius(80)
+        .label(function (d) {
+            if (gender_chart.hasFilter() && !gender_chart.hasFilter(d.key)) {
+                return d.key + '(0%)';
+            }
+            var label = d.key;
+            if (label === 'M'){
+              label = 'Male'
+            }else if (label === 'F'){
+              label = 'Female'
+            }
+            if (all.value()) {
+                label += '(' + Math.floor(d.value / all.value() * 100) + '%)';
+            }
+            return label;
+        })
+        .dimension(gender)
+        .group(gender_group);
+
+        employed_chart 
+        .width(200)
+        .height(200)
+        .radius(80)
+        .label(function (d) {
+            if (employed_chart.hasFilter() && !employed_chart.hasFilter(d.key)) {
+                return d.key + '(0%)';
+            }
+            var label = d.key;
+            if (label === ''){
+              label = 'uncertain'
+            }
+            if (all.value()) {
+                label += '(' + Math.floor(d.value / all.value() * 100) + '%)';
+            }
+            return label;
+        })
+        .dimension(employed)
+        .group(employed_group);
+      
+        data_count
+        .dimension(user)
+        .group(all)
+        .html({
+            some: '<strong>%filter-count</strong> selected out of <strong>%total-count</strong> records' +
+                ' | <a href=\'javascript:dc.filterAll(); dc.renderAll();\'>Reset All</a>',
+            all: 'All records selected. Please click on the graph to apply filters.'
+        });
+
+      how_much_paid_chart
+      .width(1200)
+      .height(100)
+      .margins({top: 10, right: 50, bottom: 30, left: 40})
+      .dimension(how_much_paid)
+      .group(how_much_paid_group)
+      .elasticY(true)
+      .centerBar(true)
+      .round(dc.round.floor)
+      .alwaysUseRounding(true)
+      .x(d3.scale.linear().domain([0, 160000]))
+      .renderHorizontalGridLines(true)
+      .filterPrinter(function (filters) {
+            var filter = filters[0], s = '';
+            s += numberFormat(filter[0]) + ' -> ' + numberFormat(filter[1]) + '';
+            return s;
+        });
+      how_much_paid_chart.xUnits(function(){return 200;});
+      how_much_paid_chart.yAxis().ticks(5);
+      how_much_paid_chart.xAxis().tickFormat(d => (Math.floor(d/1000) + 'k'))
+
+
+     money_in_out_times_chart
+     .width(500)
+      .height(500)
+      .x(d3.scale.linear().domain([0, 30]))
+      .y(d3.scale.linear().domain([0, 30]))
+      .yAxisLabel("#times user send money")
+      .xAxisLabel("#times user receive money")
+      .clipPadding(10)
+      .dimension(money_in_out_times)
+      .excludedOpacity(0.5)
+      .group(money_in_out_times_group)
+      .symbolSize(4)
+      .highlightedSize(2)
+      .colorAccessor(function(d) {
+        return d.key[2];
+      })
+      .colors(scatter_colors);
+
+      
+
+      dc.renderAll();
+    })
+
+  </script>
+</html>
